@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+pydantic>=2.0
+python-multipart
+pillow
+# add on Kaggle as needed depending on which backends you pin:
+# torch, torchvision, trimesh, huggingface_hub, diffusers, transformers, xformers
