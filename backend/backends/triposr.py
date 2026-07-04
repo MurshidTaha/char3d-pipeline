@@ -60,6 +60,7 @@ class TripoSRBackend(Backend3DGenerator):
         output_dir.mkdir(parents=True, exist_ok=True)
         
         from tsr.utils import remove_background, resize_foreground
+        import numpy as np
         
         print(f"Loading reference image: {reference_image_path}")
         image = Image.open(reference_image_path).convert("RGBA")
@@ -69,6 +70,18 @@ class TripoSRBackend(Backend3DGenerator):
         session = rembg.new_session()
         image = remove_background(image, session)
         image = resize_foreground(image, 0.85)
+
+        # remove_background/resize_foreground both return RGBA (alpha marks
+        # the foreground) — the model expects 3-channel RGB. Composite onto a
+        # neutral 50% gray background and drop the alpha channel, matching
+        # TripoSR's own run.py reference pipeline. A plain .convert("RGB")
+        # here would instead flatten transparent pixels to black and hurt
+        # mesh quality.
+        print("Compositing foreground onto neutral gray + dropping alpha...")
+        image_arr = np.array(image).astype(np.float32) / 255.0
+        rgb, alpha = image_arr[:, :, :3], image_arr[:, :, 3:4]
+        image_arr = rgb * alpha + (1 - alpha) * 0.5
+        image = Image.fromarray((image_arr * 255.0).astype(np.uint8))
 
         print("Running TripoSR 3D generation...")
         with torch.no_grad():
@@ -83,5 +96,5 @@ class TripoSRBackend(Backend3DGenerator):
         return {
             "mesh_path": mesh_path,
             "texture_paths": [],  # TripoSR uses vertex colors, not separate PBR texture maps
-            "pose": "arbitrary_input_pose",  
+            "pose": "arbitrary_input_pose",
         }
