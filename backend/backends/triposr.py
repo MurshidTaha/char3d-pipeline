@@ -86,8 +86,8 @@ class TripoSRBackend(Backend3DGenerator):
         print("Running TripoSR 3D generation...")
         with torch.no_grad():
             scene_codes = self._model([image], device="cuda:0")
-            meshes = self._model.extract_mesh(scene_codes)
-            mesh = meshes[0]
+            pythonmeshes = self._model.extract_mesh(scene_codes, has_vertex_color=True)
+            mesh = pythonmeshes[0]
 
         mesh_path = output_dir / "raw_mesh.obj"
         print(f"Exporting raw mesh to: {mesh_path}")
