@@ -1,15 +1,13 @@
-"""
-TRELLIS backend — hard-surface / mechanical objects, photoreal humans, props.
-Repo: https://github.com/microsoft/TRELLIS
-
-Single-object focus, per spec — cannot segment multi-object scenes, so the
-reference image must already be a clean single-subject crop (your existing
-SDXL character-sheet pipeline should already produce this).
-"""
-
+import sys
+import gc
+import torch
 from pathlib import Path
 from .base import Backend3DGenerator
 
+# Dynamically add TRELLIS to path
+repo_path = Path("/kaggle/working/char3d-pipeline/TRELLIS")
+if str(repo_path) not in sys.path:
+    sys.path.append(str(repo_path))
 
 class TRELLISBackend(Backend3DGenerator):
     name = "trellis"
@@ -22,26 +20,37 @@ class TRELLISBackend(Backend3DGenerator):
     def load(self):
         if self._loaded:
             return
+            
+        # NOTE: Replace with actual TRELLIS loader
+        print("Loading TRELLIS weights...")
         # self._model = load_trellis_pipeline(...)
         self._loaded = True
 
     def unload(self):
         if self._model is not None:
-            # del self._model; torch.cuda.empty_cache()
+            print("Unloading TRELLIS and freeing VRAM...")
+            del self._model
             self._model = None
+            gc.collect()
+            torch.cuda.empty_cache()
         self._loaded = False
 
     def generate(self, reference_image_path: Path, output_dir: Path, pose_hint: str) -> dict:
         output_dir.mkdir(parents=True, exist_ok=True)
+        print(f"Running TRELLIS on {reference_image_path}")
+        
         # outputs = self._model.run(reference_image_path)
         # mesh, texture = outputs["mesh"], outputs["texture"]
 
         mesh_path = output_dir / "raw_mesh.glb"
         texture_path = output_dir / "raw_basecolor.png"
-        # mesh.export(mesh_path); texture.save(texture_path)
+        
+        print(f"Exporting raw mesh to: {mesh_path}")
+        # mesh.export(mesh_path)
+        # texture.save(texture_path)
 
         return {
             "mesh_path": mesh_path,
             "texture_paths": [texture_path],
-            "pose": "arbitrary_input_pose",  # does NOT auto-canonicalize, per spec
+            "pose": "arbitrary_input_pose",
         }
