@@ -5,3 +5,7 @@ python-multipart
 pillow
 # add on Kaggle as needed depending on which backends you pin:
 # torch, torchvision, trimesh, huggingface_hub, diffusers, transformers, xformers
+#
+# NOT a pip package: rigging.py shells out to a Blender binary. Grab the
+# portable Linux tarball instead — see SETUP_GUIDE.md step 2b. Set
+# BLENDER_EXECUTABLE to point at it before starting uvicorn.

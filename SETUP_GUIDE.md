@@ -59,6 +59,38 @@ a time budget and unused heavy installs just burn it.
 
 ---
 
+## 2b. Installing Blender on Kaggle (for the self-hosted rigger)
+
+Rigging no longer depends on Mixamo — it runs on Blender headless instead
+(see `backend/rigging.py` for why). Blender isn't a pip package, so grab the
+portable Linux tarball once per session:
+
+```python
+import subprocess, os
+
+BLENDER_VERSION = "4.2.3"  # check https://download.blender.org/release/ for current LTS
+tarball = f"blender-{BLENDER_VERSION}-linux-x64.tar.xz"
+subprocess.run(["wget", "-q", f"https://download.blender.org/release/Blender{BLENDER_VERSION[:3]}/{tarball}"], cwd="/kaggle/working", check=True)
+subprocess.run(["tar", "-xf", tarball], cwd="/kaggle/working", check=True)
+
+os.environ["BLENDER_EXECUTABLE"] = f"/kaggle/working/blender-{BLENDER_VERSION}-linux-x64/blender"
+```
+
+No `sudo`/apt install needed — the tarball is self-contained and runs from
+wherever you extract it. `rigging.py` reads `BLENDER_EXECUTABLE` from the
+environment, so set it before starting the FastAPI server (uvicorn inherits
+the notebook's env when launched via `subprocess.Popen` in the same cell/session).
+
+Sanity check:
+```python
+!$BLENDER_EXECUTABLE --version
+```
+
+This step is CPU-only — it doesn't touch the T4, so it's safe to run
+alongside Phase 5 or any of the 3D generation backends without VRAM contention.
+
+---
+
 ## 3. Enable GPU on the notebook
 
 Notebook settings (right panel) → Accelerator → **GPU T4 x1**. Restart the
@@ -194,3 +226,6 @@ You'll need to update `CHAR3D_API_BASE` in the frontend again after this.
 | Job stuck on "queued" forever | Worker thread didn't start — check for an exception in the first job's traceback via `GET /jobs/{job_id}` |
 | `CORS` errors in browser console | Shouldn't happen (CORS is wide open in `main.py`), but if you tighten `allow_origins` later, make sure your frontend's actual origin is included |
 | GPU OOM once real backends are wired in | Confirm `BackendManager` is actually unloading between jobs — check `nvidia-smi` before/after a job completes |
+| Job fails at rigging with "Blender executable not found" | `BLENDER_EXECUTABLE` env var not set, or set before the wrong cell/kernel restart — re-run step 2b, then restart the uvicorn cell so it inherits the env |
+| Job fails at rigging with "No usable mesh" | The generation stage is still a stub for that backend (mesh.export() not wired in yet) — rigging can't run on a file that was never written; fill in that backend's `generate()` first |
+| Rig report shows `used_fallback_leg_split: true` | Normal for dress/saree-style geometry where the lower body doesn't split into two leg clusters — proportional placement was used instead; rig is still valid, just less geometry-informed |

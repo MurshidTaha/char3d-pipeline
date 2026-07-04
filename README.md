@@ -18,8 +18,8 @@ tested (see below). What's stubbed, and why:
 | FastAPI endpoints (submit/batch/poll/download) | ✅ real, tested | Verified routes load correctly |
 | Frontend form | ✅ real | Open `frontend/index.html`, point `API_BASE` at your ngrok URL |
 | 4 backend `generate()` calls | 🔲 stub | Needs your pinned model revisions — see each file's TODO |
-| Mixamo rigging automation | 🔲 stub | Mixamo has no public API; needs Selenium/Playwright flow — see `rigging.py` |
-| Rig validation (bone hierarchy check) | 🔲 stub | Needs Blender headless (`bpy`) — same tool you'll use in Phase 5.5 anyway |
+| Rigging (skeleton fit + skinning) | ✅ real | Mixamo dropped entirely (no public API) in favor of a self-hosted Blender-headless auto-rigger — see `backend/blender_scripts/auto_rig.py` and `rigging.py`'s module docstring |
+| Rig validation (bone hierarchy check) | ✅ real | Computed inside the same Blender subprocess, written to a JSON sidecar — no FBX re-parsing needed |
 | Real-ESRGAN texture upscale | 🔲 stub | Wire in your existing Phase 1 wrapper — one-line import per the TODO |
 
 Nothing here is fake scaffolding — every stub is a real function with the correct
@@ -45,14 +45,16 @@ Then in a separate cell: `ngrok http 8000`, and point `frontend/index.html`'s
 1. **TripoSR first** — lowest VRAM, single pass, no pose canonicalization complexity.
    Gets the whole pipeline (generate → rig → upscale → package) running end-to-end
    with one real backend before touching the other three.
-2. **Rig validation via Blender headless** — you'll need this working for Phase 5.5
-   anyway, so it's not wasted effort building it here first.
-3. **Mixamo automation** — the most likely thing to break/need maintenance since it's
-   browser automation against a UI you don't control. Consider a self-hosted fallback
-   if it proves too brittle (noted in `rigging.py`).
-4. **CharacterGen, InstantMesh, TRELLIS** — same shape as TripoSR, just swap the
-   model loader/inference calls per each file's TODO.
-5. **Real-ESRGAN hookup** — import your Phase 1 wrapper into `upscaling.py`.
+2. ~~Rig validation via Blender headless~~ / ~~Mixamo automation~~ — **done**.
+   Rigging now runs entirely on a self-hosted Blender-headless auto-rigger
+   (geometry-driven skeleton fit + automatic weight skinning); Mixamo was
+   dropped rather than automated, since it has no public API and browser
+   automation would've been the fragile long-term bet. See `rigging.py`.
+3. **CharacterGen, InstantMesh, TRELLIS** — same shape as TripoSR, just swap the
+   model loader/inference calls per each file's TODO. Note: rigging will still
+   fail with "No usable mesh" until each backend's `generate()` actually calls
+   `mesh.export(...)` instead of the current commented-out placeholder line.
+4. **Real-ESRGAN hookup** — import your Phase 1 wrapper into `upscaling.py`.
 
 ## Open decisions from the spec, resolved here
 
@@ -74,7 +76,9 @@ char3d_tool/
 │   ├── worker.py         FIFO job queue + pipeline orchestration
 │   ├── config.py         routing table (JSON-backed, hot-editable)
 │   ├── models.py         pydantic request/job models
-│   ├── rigging.py        Mixamo integration + bone-hierarchy validation
+│   ├── rigging.py        Self-hosted Blender-headless auto-rig + bone-hierarchy validation
+│   ├── blender_scripts/
+│   │   └── auto_rig.py   Runs inside Blender: skeleton fit + skinning + rig report
 │   ├── upscaling.py      Real-ESRGAN texture upscale hookup
 │   ├── packaging.py      zip assembly + metadata.json
 │   ├── cache.py          (image_hash, organism, style, backend) → cached zip

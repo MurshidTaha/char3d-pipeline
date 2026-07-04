@@ -1,27 +1,67 @@
 """
 Rigging stage — universal step for all four backends since none rig natively.
 
-Mixamo's auto-rigger is web-based (upload mesh → get FBX back), not a
-public REST API — Adobe doesn't publish one. Two realistic implementation
-paths, pick one before wiring this up for real:
+SELF-HOSTED, NOT MIXAMO. Mixamo has no public REST API — its only automation
+path is browser-driven (Selenium/Playwright against mixamo.com), which the
+original spec already flagged as the fragile option. This implementation goes
+straight to the fallback noted below instead: a self-hosted, CPU-only
+auto-rigger built on Blender headless, since Blender is already the tool
+consuming this package downstream in Phase 5.5 anyway.
 
-  A) Browser automation (Selenium/Playwright) driving mixamo.com's actual
-     upload/rig/download flow. Fragile to Adobe's frontend changes, but
-     zero-cost and matches "free auto-rigger" from the spec.
-  B) Swap Mixamo for a self-hosted alternative with a real API (e.g. a
-     local rigging tool/algorithm) if browser automation proves too brittle
-     in production. Worth flagging back to the user if (A) breaks often.
+Why this fits your box (14.6GB usable T4 VRAM, 29GB CPU RAM):
+  - Skeleton fitting + skinning run entirely on CPU. Zero VRAM usage — this
+    stage never competes with whichever of the 4 generation backends or your
+    Phase 5 SDXL process currently owns the T4.
+  - A single character mesh is a few MB; Blender's own overhead is modest.
+    Comfortably inside 29GB even running alongside other CPU work.
+  - Runs as a subprocess (not an in-process `bpy` import), so a Blender crash
+    on a malformed mesh can't take down the FastAPI worker process, and you
+    don't need Blender's Python ABI to match whatever Python runs the API.
 
-This module is written against interface (A) since that's what the spec
-names explicitly, with the automation calls stubbed out.
+See backend/blender_scripts/auto_rig.py for the actual rigging logic
+(geometry-driven skeleton placement + Blender's automatic weight skinning).
+That script writes a JSON "report" sidecar — bone count, hierarchy check,
+whether any fallback heuristic was used — computed inside Blender itself,
+since Blender already has the bone graph in memory. Nothing here re-parses
+the exported FBX in Python.
+
+Setup: see SETUP_GUIDE.md § "Installing Blender on Kaggle" for getting a
+portable Blender build onto the notebook (no full desktop install needed).
 """
 
 from pathlib import Path
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+import json
+import subprocess
+import shutil
+import os
+
+BLENDER_SCRIPT = Path(__file__).parent / "blender_scripts" / "auto_rig.py"
+
+# Resolution order: explicit env var (set this in your Kaggle notebook after
+# extracting portable Blender) -> "blender" on PATH -> the conventional
+# extraction path from the SETUP_GUIDE instructions.
+BLENDER_EXECUTABLE = (
+    os.environ.get("BLENDER_EXECUTABLE")
+    or shutil.which("blender")
+    or "/kaggle/working/blender/blender"
+)
+
+RIG_TIMEOUT_SECONDS = 300  # a single character mesh should rig in well under this
 
 
 class MalformedRigError(Exception):
-    """Raised when the returned rig fails bone-hierarchy validation."""
+    """Raised when a rig was produced but fails bone-hierarchy validation."""
+    pass
+
+
+class RiggingToolError(Exception):
+    """
+    Raised when the rigging *tool* itself couldn't run — missing Blender
+    binary, unreadable/empty input mesh, Blender crash, timeout. Distinct
+    from MalformedRigError so worker.py's error message points at the right
+    problem (environment/upstream-stage vs. actual geometry).
+    """
     pass
 
 
@@ -30,42 +70,86 @@ class RigResult:
     rigged_fbx_path: Path
     bone_count: int
     has_standard_hierarchy: bool
+    bone_names: list = field(default_factory=list)
+    used_fallback_leg_split: bool = False
+    used_fallback_arm_pose: bool = False
+
+
+def _resolve_blender() -> str:
+    if shutil.which(BLENDER_EXECUTABLE):
+        return BLENDER_EXECUTABLE
+    if Path(BLENDER_EXECUTABLE).exists():
+        return BLENDER_EXECUTABLE
+    raise RiggingToolError(
+        f"Blender executable not found (looked for '{BLENDER_EXECUTABLE}'). "
+        f"Set the BLENDER_EXECUTABLE env var to your portable Blender binary, "
+        f"or see SETUP_GUIDE.md § 'Installing Blender on Kaggle'."
+    )
 
 
 def upload_and_rig(mesh_path: Path, output_dir: Path, source_pose: str) -> RigResult:
     """
-    Drives Mixamo's auto-rigger.
+    Runs the self-hosted Blender auto-rigger on mesh_path.
 
-    source_pose matters: CharacterGen's canonical A-pose output rigs more
-    reliably here than the arbitrary poses from TripoSR/InstantMesh/TRELLIS,
-    per spec. If source_pose != "a_pose_canonical", expect a higher
-    malformed-rig rate — this function should still attempt it and let
-    validate_rig() catch failures rather than skipping non-CharacterGen output.
-
-    TODO: implement the actual Mixamo browser-automation flow here:
-      1. Upload mesh_path to mixamo.com
-      2. Wait for auto-detection of hip/joints (may need manual marker
-         placement fallback if auto-detect fails on a non-canonical pose)
-      3. Select a neutral/no-animation rig export (we just want the skeleton
-         + skin weights, not a baked animation)
-      4. Download resulting FBX to output_dir
+    source_pose is threaded through unchanged from the generation stage —
+    CharacterGen's canonical A-pose output is still the best-behaved input
+    (arms held clear of the torso helps the shoulder/hand geometry heuristic
+    in auto_rig.py), matching what the spec expected from Mixamo too.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
     rigged_path = output_dir / "mesh_rigged.fbx"
+    sidecar_path = output_dir / "rig_report.json"
 
-    # --- placeholder for real automation ---
-    # driver = launch_browser()
-    # driver.upload(mesh_path)
-    # driver.wait_for_autorig()
-    # driver.download_fbx(rigged_path)
+    mesh_path = Path(mesh_path)
+    if not mesh_path.exists() or mesh_path.stat().st_size == 0:
+        raise RiggingToolError(
+            f"No usable mesh at {mesh_path} — the generation stage hasn't "
+            f"produced a real mesh file yet (check that backend's generate() "
+            f"isn't still a stub; mesh.export(...) needs to actually run)."
+        )
 
-    bone_count = _inspect_bone_count(rigged_path)
-    has_standard = _has_standard_hierarchy(rigged_path)
+    blender_bin = _resolve_blender()
+
+    cmd = [
+        blender_bin,
+        "--background",
+        "--factory-startup",
+        "--python", str(BLENDER_SCRIPT),
+        "--",
+        "--input", str(mesh_path),
+        "--output", str(rigged_path),
+        "--report", str(sidecar_path),
+        "--pose", source_pose,
+    ]
+
+    try:
+        proc = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=RIG_TIMEOUT_SECONDS
+        )
+    except subprocess.TimeoutExpired:
+        raise RiggingToolError(
+            f"Blender auto-rig timed out after {RIG_TIMEOUT_SECONDS}s on {mesh_path}."
+        )
+
+    if not sidecar_path.exists():
+        raise RiggingToolError(
+            f"Blender exited (code {proc.returncode}) without writing a rig "
+            f"report — likely crashed before reaching auto_rig.py's own error "
+            f"handling. stderr tail:\n{proc.stderr[-2000:]}"
+        )
+
+    report = json.loads(sidecar_path.read_text())
+
+    if report.get("error"):
+        raise RiggingToolError(f"auto_rig.py failed on {mesh_path}: {report['error']}")
 
     return RigResult(
         rigged_fbx_path=rigged_path,
-        bone_count=bone_count,
-        has_standard_hierarchy=has_standard,
+        bone_count=report["bone_count"],
+        has_standard_hierarchy=report["has_standard_hierarchy"],
+        bone_names=report.get("bone_names", []),
+        used_fallback_leg_split=report.get("used_fallback_leg_split", False),
+        used_fallback_arm_pose=report.get("used_fallback_arm_pose", False),
     )
 
 
@@ -80,17 +164,3 @@ def validate_rig(result: RigResult) -> None:
             f"root → spine → limbs hierarchy (bone_count={result.bone_count}). "
             f"Job flagged, not packaged."
         )
-
-
-def _inspect_bone_count(fbx_path: Path) -> int:
-    # TODO: parse FBX (e.g. via Blender's Python API `bpy` running headless,
-    # or a library like `pyfbx`) and count bones in the armature.
-    return 0
-
-
-def _has_standard_hierarchy(fbx_path: Path) -> bool:
-    # TODO: check for root -> spine -> limb chain in the parsed armature.
-    # Blender headless (`blender --background --python check_rig.py`) is the
-    # most reliable option since it's the same tool consuming this package
-    # downstream in Phase 5.5.
-    return False
