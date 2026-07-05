@@ -6,87 +6,120 @@
 <title>Character-to-3D — Asset Factory</title>
 <style>
   :root{
-    --bg: #14171a;
-    --panel: #1b1f23;
-    --line: #2a2f34;
-    --text: #e4e6e8;
-    --dim: #8b9198;
-    --accent: #ff8a3d;
-    --accent-dim: #4a3626;
-    --ok: #5fbf7a;
-    --err: #e2634f;
-    --mono: "IBM Plex Mono", "SF Mono", Consolas, monospace;
-    --sans: "IBM Plex Sans", -apple-system, sans-serif;
+    --bg1:#6d28d9; --bg2:#db2777; --bg3:#f97316;
+    --card:#ffffff; --card-soft:#faf7ff;
+    --line:#ece5fb; --text:#241b3a; --dim:#7a7191;
+    --accent:#8b3ffb; --accent2:#ff5da2;
+    --ok:#16c784; --ok-bg:#e8fbf3;
+    --err:#ff4d6d; --err-bg:#fff0f3;
+    --warn:#ffb020;
+    --mono:"IBM Plex Mono","SF Mono",Consolas,monospace;
+    --sans:"Poppins","Segoe UI",-apple-system,sans-serif;
   }
   *{box-sizing:border-box;}
   body{
-    margin:0; background:var(--bg); color:var(--text);
-    font-family:var(--sans); line-height:1.5;
-    padding:32px 20px 80px;
+    margin:0; min-height:100vh; color:var(--text); font-family:var(--sans); line-height:1.5;
+    padding:36px 18px 90px;
+    background:
+      radial-gradient(circle at 10% 0%, #ffb3d1 0%, transparent 45%),
+      radial-gradient(circle at 90% 10%, #ffd39a 0%, transparent 40%),
+      linear-gradient(135deg, var(--bg1), var(--bg2) 55%, var(--bg3));
+    background-attachment:fixed;
   }
-  .wrap{max-width:720px; margin:0 auto;}
-  header{margin-bottom:32px; border-bottom:1px solid var(--line); padding-bottom:20px;}
-  .tag{font-family:var(--mono); font-size:11px; letter-spacing:0.12em; color:var(--accent); text-transform:uppercase;}
-  h1{font-size:22px; margin:6px 0 4px; font-weight:600;}
-  .sub{color:var(--dim); font-size:13px; font-family:var(--mono);}
+  .wrap{max-width:760px; margin:0 auto;}
+  header{margin-bottom:26px; text-align:center; color:#fff;}
+  .tag{
+    display:inline-block; font-family:var(--mono); font-size:11px; letter-spacing:.14em;
+    background:rgba(255,255,255,.18); padding:5px 12px; border-radius:20px; text-transform:uppercase;
+    backdrop-filter:blur(4px);
+  }
+  h1{font-size:30px; margin:12px 0 4px; font-weight:800; text-shadow:0 2px 12px rgba(0,0,0,.15);}
+  .sub{color:rgba(255,255,255,.9); font-size:14px;}
 
-  .stage-strip{display:flex; gap:4px; margin:20px 0 28px;}
-  .stage-strip span{flex:1; height:3px; background:var(--line); border-radius:2px;}
-  .stage-strip span.active{background:var(--accent);}
-  .stage-strip span.done{background:var(--ok);}
-
-  .panel{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:22px; margin-bottom:16px;}
-  label{display:block; font-size:12px; color:var(--dim); margin-bottom:6px; font-family:var(--mono);}
+  .panel{
+    background:var(--card); border:1px solid var(--line); border-radius:18px; padding:24px;
+    margin-bottom:18px; box-shadow:0 12px 30px rgba(80,20,120,.18);
+  }
+  label{display:block; font-size:12px; color:var(--dim); margin-bottom:6px; font-weight:600; letter-spacing:.02em;}
   .field{margin-bottom:18px;}
   input[type=text], textarea, select{
-    width:100%; background:#101315; border:1px solid var(--line); color:var(--text);
-    padding:10px 12px; border-radius:6px; font-family:var(--sans); font-size:14px;
+    width:100%; background:var(--card-soft); border:1.5px solid var(--line); color:var(--text);
+    padding:11px 13px; border-radius:10px; font-family:var(--sans); font-size:14px;
   }
   textarea{min-height:90px; resize:vertical;}
-  input:focus, textarea:focus, select:focus{outline:none; border-color:var(--accent);}
+  input:focus, textarea:focus, select:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px #8b3ffb22;}
 
   .row{display:flex; gap:14px;}
   .row > .field{flex:1;}
 
   .dropzone{
-    border:1px dashed var(--line); border-radius:8px; padding:20px; text-align:center;
-    cursor:pointer; color:var(--dim); font-size:13px; transition:border-color .15s;
+    border:2px dashed #d9c9fb; border-radius:14px; padding:22px; text-align:center;
+    cursor:pointer; color:var(--dim); font-size:13px; transition:.15s; background:var(--card-soft);
   }
-  .dropzone.drag{border-color:var(--accent); color:var(--accent);}
-  .dropzone img{max-height:100px; border-radius:6px; margin-bottom:8px;}
+  .dropzone.drag{border-color:var(--accent); color:var(--accent); background:#f3ebff;}
+  .dropzone img{max-height:110px; border-radius:8px; margin-bottom:8px;}
   .dropzone input{display:none;}
 
   .route-hint{
     font-family:var(--mono); font-size:12px; color:var(--dim);
-    background:#101315; border:1px solid var(--line); border-radius:6px;
+    background:var(--card-soft); border:1px solid var(--line); border-radius:8px;
     padding:10px 12px; margin-top:8px; display:flex; justify-content:space-between; align-items:center;
   }
-  .route-hint b{color:var(--accent); font-weight:600;}
+  .route-hint b{color:var(--accent); font-weight:700;}
 
   .toggle-row{display:flex; align-items:center; gap:10px; margin-bottom:18px;}
   .toggle-row input{width:auto;}
-  .toggle-row label{margin:0; font-size:13px; color:var(--text);}
+  .toggle-row label{margin:0; font-size:13px; color:var(--text); font-weight:400;}
 
   button.submit{
-    width:100%; background:var(--accent); color:#1a1200; border:none;
-    padding:13px; border-radius:7px; font-weight:600; font-size:14px; cursor:pointer;
-    font-family:var(--sans);
+    width:100%; background:linear-gradient(90deg, var(--accent), var(--accent2));
+    color:#fff; border:none; padding:15px; border-radius:12px; font-weight:700; font-size:15px;
+    cursor:pointer; font-family:var(--sans); box-shadow:0 8px 20px rgba(139,63,251,.35);
   }
-  button.submit:disabled{background:var(--accent-dim); color:var(--dim); cursor:not-allowed;}
-  button.submit:hover:not(:disabled){filter:brightness(1.08);}
+  button.submit:disabled{background:#d9d0ea; color:#a79cc4; cursor:not-allowed; box-shadow:none;}
+  button.submit:hover:not(:disabled){filter:brightness(1.06); transform:translateY(-1px);}
 
   .status-panel{display:none;}
   .status-panel.show{display:block;}
+
+  .progress-wrap{margin-bottom:18px;}
+  .progress-top{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;}
+  .progress-stage{font-weight:700; font-size:15px;}
+  .progress-pct{font-family:var(--mono); font-size:22px; font-weight:800; color:var(--accent);}
+  .progress-track{background:#eee3fb; border-radius:20px; height:16px; overflow:hidden; position:relative;}
+  .progress-fill{
+    height:100%; border-radius:20px; background:linear-gradient(90deg, var(--accent2), var(--accent), var(--bg3));
+    background-size:200% 100%; width:0%; transition:width .5s ease;
+    animation:shimmer 2.2s linear infinite;
+  }
+  .progress-fill.done{animation:none; background:var(--ok);}
+  .progress-fill.failed{animation:none; background:var(--err);}
+  @keyframes shimmer{0%{background-position:0% 0;}100%{background-position:200% 0;}}
+
   .status-line{display:flex; justify-content:space-between; font-family:var(--mono); font-size:13px; padding:8px 0; border-bottom:1px solid var(--line);}
   .status-line:last-child{border-bottom:none;}
-  .status-val{color:var(--accent);}
+  .status-val{color:var(--accent); font-weight:600;}
   .status-val.ok{color:var(--ok);}
   .status-val.err{color:var(--err);}
 
-  .download-btn{
-    display:block; text-align:center; margin-top:16px; background:var(--ok); color:#0c1f10;
-    padding:12px; border-radius:7px; font-weight:600; text-decoration:none; font-size:14px;
+  .log-box{
+    background:#1c1730; color:#d7cdfb; font-family:var(--mono); font-size:12px;
+    border-radius:12px; padding:14px; margin-top:14px; max-height:220px; overflow-y:auto;
+    line-height:1.6;
   }
+  .log-box .l-ok{color:#7be6b0;}
+  .log-box .l-err{color:#ff8fa3;}
+  .log-box .l-warn{color:#ffce7a;}
+
+  .actions{display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;}
+  .btn{
+    flex:1; min-width:150px; text-align:center; padding:12px; border-radius:10px; font-weight:700;
+    text-decoration:none; font-size:13px; cursor:pointer; border:none; font-family:var(--sans);
+  }
+  .btn-download{background:var(--ok-bg); color:#0a7a52; border:1.5px solid #b6f0d8;}
+  .btn-autosave{background:#eee3fb; color:var(--accent); border:1.5px solid #d9c9fb;}
+  .btn-autosave.active{background:var(--ok-bg); color:#0a7a52; border-color:#b6f0d8;}
+  .btn:hover{filter:brightness(1.05);}
 
   .spinner{
     width:14px; height:14px; border:2px solid var(--line); border-top-color:var(--accent);
@@ -95,9 +128,24 @@
   @keyframes spin{to{transform:rotate(360deg);}}
 
   .error-box{
-    background:#2a1512; border:1px solid #4a2420; color:var(--err); font-family:var(--mono);
-    font-size:12px; padding:12px; border-radius:6px; margin-top:12px; white-space:pre-wrap; word-break:break-word;
+    background:var(--err-bg); border:1px solid #ffc9d3; color:#c81b3f; font-family:var(--mono);
+    font-size:12px; padding:12px; border-radius:8px; margin-top:12px; white-space:pre-wrap; word-break:break-word;
+    max-height:220px; overflow-y:auto;
   }
+
+  .viewer-panel{display:none;}
+  .viewer-panel.show{display:block;}
+  #viewer3d{
+    width:100%; height:380px; border-radius:14px; background:radial-gradient(circle, #2a2145, #16111f);
+    position:relative; overflow:hidden;
+  }
+  .viewer-hint{font-size:11px; color:var(--dim); text-align:center; margin-top:8px;}
+  .viewer-loading{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    color:#d7cdfb; font-family:var(--mono); font-size:13px;
+  }
+
+  footer{text-align:center; color:rgba(255,255,255,.75); font-size:12px; margin-top:26px;}
 </style>
 </head>
 <body>
@@ -105,17 +153,9 @@
 
   <header>
     <div class="tag">Phase 5.5 — asset factory</div>
-    <h1>Character → 3D</h1>
+    <h1>Character → 3D ✨</h1>
     <div class="sub">reference sheet in → rigged, upscaled package out</div>
   </header>
-
-  <div class="stage-strip" id="stageStrip">
-    <span data-stage="queued"></span>
-    <span data-stage="running_generation"></span>
-    <span data-stage="running_rigging"></span>
-    <span data-stage="running_upscale"></span>
-    <span data-stage="packaging"></span>
-  </div>
 
   <form class="panel" id="jobForm">
     <div class="field">
@@ -177,22 +217,59 @@
       <label for="quickPreview">quick preview (force TripoSR, fast draft)</label>
     </div>
 
+    <div class="toggle-row">
+      <input type="checkbox" id="autoSaveToggle">
+      <label for="autoSaveToggle">auto-save finished packages to a local folder (no manual download)</label>
+    </div>
+
     <button type="submit" class="submit" id="submitBtn">generate character package</button>
   </form>
 
   <div class="panel status-panel" id="statusPanel">
+    <div class="progress-wrap">
+      <div class="progress-top">
+        <span class="progress-stage" id="progressStage">queued</span>
+        <span class="progress-pct" id="progressPct">0%</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    </div>
+
     <div class="status-line"><span>job id</span><span class="status-val" id="statJobId">—</span></div>
     <div class="status-line"><span>backend</span><span class="status-val" id="statBackend">—</span></div>
-    <div class="status-line"><span>status</span><span class="status-val" id="statStatus"><span class="spinner"></span>queued</span></div>
     <div class="status-line"><span>queue position</span><span class="status-val" id="statQueue">—</span></div>
+
+    <div class="log-box" id="logBox"></div>
     <div id="errorBox"></div>
-    <a href="#" class="download-btn" id="downloadBtn" style="display:none;">download package (.zip)</a>
+
+    <div class="actions">
+      <a href="#" class="btn btn-download" id="downloadBtn" style="display:none;">⬇ download .zip</a>
+      <button type="button" class="btn btn-autosave" id="chooseFolderBtn" style="display:none;">📁 choose auto-save folder</button>
+    </div>
     <div id="downloadErrorBox"></div>
   </div>
 
+  <div class="panel viewer-panel" id="viewerPanel">
+    <label style="margin-bottom:10px;">3D preview — drag to rotate, scroll to zoom</label>
+    <div id="viewer3d"><div class="viewer-loading" id="viewerLoading">loading model…</div></div>
+    <div class="viewer-hint">rendered directly in this page — no external viewer needed</div>
+  </div>
+
+  <footer>char3d-pipeline · running on your own Kaggle GPU</footer>
 </div>
 
-<script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+  import * as THREE from "three";
+  import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+  import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
   // Point this at your ngrok URL once the Kaggle backend is running.
   // Either edit the placeholder below, or set window.CHAR3D_API_BASE
   // (e.g. in a <script> tag above this one) before this file loads —
@@ -264,16 +341,55 @@
     reader.readAsDataURL(file);
   }
 
-  // Stage strip
-  const stages = ["queued","running_generation","running_rigging","running_upscale","packaging"];
-  function setStage(status){
-    const idx = stages.indexOf(status);
-    document.querySelectorAll('#stageStrip span').forEach((el, i) => {
-      el.classList.remove('active','done');
-      if (status === 'complete'){ el.classList.add('done'); return; }
-      if (i < idx) el.classList.add('done');
-      if (i === idx) el.classList.add('active');
-    });
+  const STAGE_LABELS = {
+    queued: "queued — waiting for a free GPU slot",
+    running_generation: "generating multi-view mesh",
+    running_rigging: "auto-rigging skeleton",
+    running_upscale: "upscaling textures",
+    packaging: "packaging final files",
+    complete: "complete 🎉",
+    failed: "failed",
+  };
+
+  // ---- Auto-save via File System Access API (Chrome/Edge) ----
+  // The user grants folder access ONCE per session; every completed job
+  // afterward is written straight into that folder with zero manual clicks.
+  // Falls back to the manual download button on browsers without support
+  // (e.g. Firefox) or if the user hasn't granted a folder yet.
+  let autoSaveDirHandle = null;
+  const supportsFSAccess = 'showDirectoryPicker' in window;
+  const chooseFolderBtn = document.getElementById('chooseFolderBtn');
+  const autoSaveToggle = document.getElementById('autoSaveToggle');
+
+  if (supportsFSAccess) {
+    chooseFolderBtn.style.display = 'block';
+  }
+
+  chooseFolderBtn.addEventListener('click', async () => {
+    try {
+      autoSaveDirHandle = await window.showDirectoryPicker();
+      chooseFolderBtn.textContent = '✅ auto-save folder set';
+      chooseFolderBtn.classList.add('active');
+    } catch (e) {
+      // user cancelled the picker — no-op
+    }
+  });
+
+  async function autoSaveZip(jobId, filename) {
+    if (!autoSaveDirHandle) return false;
+    try {
+      const res = await fetch(`${API_BASE}/jobs/${jobId}/download`);
+      if (!res.ok) throw new Error(await res.text());
+      const blob = await res.blob();
+      const fileHandle = await autoSaveDirHandle.getFileHandle(filename, { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      return true;
+    } catch (e) {
+      console.error('auto-save failed', e);
+      return false;
+    }
   }
 
   // Submit
@@ -282,12 +398,18 @@
   const statusPanel = document.getElementById('statusPanel');
   const statJobId = document.getElementById('statJobId');
   const statBackend = document.getElementById('statBackend');
-  const statStatus = document.getElementById('statStatus');
   const statQueue = document.getElementById('statQueue');
   const downloadBtn = document.getElementById('downloadBtn');
   const errorBox = document.getElementById('errorBox');
+  const logBox = document.getElementById('logBox');
+  const progressStage = document.getElementById('progressStage');
+  const progressPct = document.getElementById('progressPct');
+  const progressFill = document.getElementById('progressFill');
+  const viewerPanel = document.getElementById('viewerPanel');
 
   let pollTimer = null;
+  let lastLogCount = 0;
+  let autoSaveAttempted = false;
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -296,8 +418,16 @@
     submitBtn.disabled = true;
     submitBtn.textContent = 'submitting...';
     errorBox.innerHTML = '';
+    logBox.innerHTML = '';
+    lastLogCount = 0;
+    autoSaveAttempted = false;
     downloadBtn.style.display = 'none';
+    viewerPanel.classList.remove('show');
     statusPanel.classList.add('show');
+    progressFill.classList.remove('done','failed');
+    progressFill.style.width = '0%';
+    progressPct.textContent = '0%';
+    progressStage.textContent = STAGE_LABELS.queued;
 
     const fd = new FormData();
     fd.append('character_name', document.getElementById('characterName').value);
@@ -315,11 +445,24 @@
       statJobId.textContent = data.job_id;
       pollJob(data.job_id);
     } catch (err) {
-      errorBox.innerHTML = `<div class="error-box">Submit failed: ${err.message}</div>`;
+      errorBox.innerHTML = `<div class="error-box">Submit failed: ${err.message}\n\nIs the Kaggle server + ngrok tunnel running? Check the API base URL.</div>`;
       submitBtn.disabled = false;
       submitBtn.textContent = 'generate character package';
     }
   });
+
+  function renderLog(lines){
+    if (!lines || lines.length === lastLogCount) return;
+    logBox.innerHTML = lines.map(l => {
+      let cls = '';
+      if (l.includes('✅')) cls = 'l-ok';
+      else if (l.includes('❌')) cls = 'l-err';
+      else if (l.includes('⚠')) cls = 'l-warn';
+      return `<div class="${cls}">${l}</div>`;
+    }).join('');
+    logBox.scrollTop = logBox.scrollHeight;
+    lastLogCount = lines.length;
+  }
 
   function pollJob(jobId){
     clearInterval(pollTimer);
@@ -329,37 +472,47 @@
         if (!res.ok) throw new Error(await res.text());
         const job = await res.json();
 
-        setStage(job.status);
+        const pct = job.progress_pct ?? 0;
+        progressFill.style.width = pct + '%';
+        progressPct.textContent = pct + '%';
+        progressStage.textContent = STAGE_LABELS[job.status] || job.status.replaceAll('_',' ');
         statBackend.textContent = job.backend_used || '—';
         statQueue.textContent = job.status === 'queued' ? (job.queue_position ?? '—') : '—';
+        renderLog(job.log);
 
         if (job.status === 'complete'){
-          statStatus.innerHTML = job.cache_hit
-            ? '<span class="status-val ok">complete (cache hit)</span>'
-            : '<span class="status-val ok">complete</span>';
+          progressFill.classList.add('done');
           downloadBtn.style.display = 'block';
           downloadBtn.dataset.jobId = jobId;
-          downloadBtn.dataset.characterName = job.request?.character_name || jobId;
+          const charName = job.request?.character_name || jobId;
+          downloadBtn.dataset.characterName = charName;
           submitBtn.disabled = false;
           submitBtn.textContent = 'generate character package';
           clearInterval(pollTimer);
+
+          loadViewer(jobId);
+
+          if (autoSaveToggle.checked && autoSaveDirHandle && !autoSaveAttempted) {
+            autoSaveAttempted = true;
+            downloadBtn.textContent = '💾 auto-saving...';
+            autoSaveZip(jobId, `${charName}.zip`).then(ok => {
+              downloadBtn.textContent = ok ? '✅ saved to folder' : '⬇ download .zip';
+            });
+          }
         } else if (job.status === 'failed'){
-          statStatus.innerHTML = '<span class="status-val err">failed</span>';
-          errorBox.innerHTML = `<div class="error-box">${(job.error || 'Unknown error').slice(0, 800)}</div>`;
+          progressFill.classList.add('failed');
+          errorBox.innerHTML = `<div class="error-box">${(job.error || 'Unknown error').slice(0, 1200)}</div>`;
           submitBtn.disabled = false;
           submitBtn.textContent = 'generate character package';
           clearInterval(pollTimer);
-        } else {
-          statStatus.innerHTML = `<span class="spinner"></span>${job.status.replaceAll('_',' ')}`;
         }
       } catch (err) {
-        // transient network hiccup — keep polling
+        // transient network hiccup (e.g. ngrok blip) — keep polling
       }
-    }, 2000);
+    }, 1500);
   }
 
-  // Download button — fetches the zip as a blob and saves it directly from
-  // this page, rather than navigating the browser to the ngrok/Kaggle URL.
+  // Manual download button — still available as a fallback / on-demand option
   const downloadErrorBox = document.getElementById('downloadErrorBox');
 
   downloadBtn.addEventListener('click', async (e) => {
@@ -376,8 +529,6 @@
       const res = await fetch(`${API_BASE}/jobs/${jobId}/download`);
       if (!res.ok) throw new Error(await res.text());
 
-      // Prefer the filename the server sent (Content-Disposition), fall
-      // back to the character name if the header isn't exposed by CORS.
       const disposition = res.headers.get('Content-Disposition') || '';
       const match = disposition.match(/filename="?([^"]+)"?/);
       const filename = match ? match[1] : `${downloadBtn.dataset.characterName}.zip`;
@@ -402,6 +553,82 @@
       downloadBtn.style.pointerEvents = 'auto';
     }
   });
+
+  // ---- Embedded 3D viewer (three.js, self-hosted in this page) ----
+  let renderer, scene, camera, controls, currentModel;
+
+  function initViewer(){
+    const container = document.getElementById('viewer3d');
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+    camera.position.set(0, 1.4, 3.2);
+
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    container.appendChild(renderer.domElement);
+
+    scene.add(new THREE.AmbientLight(0xffffff, 1.1));
+    const key = new THREE.DirectionalLight(0xffffff, 1.4);
+    key.position.set(2, 4, 3);
+    scene.add(key);
+    const fill = new THREE.DirectionalLight(0xff9fd6, 0.5);
+    fill.position.set(-3, 1, -2);
+    scene.add(fill);
+
+    controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 1, 0);
+    controls.enableDamping = true;
+
+    animate();
+    window.addEventListener('resize', () => {
+      const c = document.getElementById('viewer3d');
+      camera.aspect = c.clientWidth / c.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(c.clientWidth, c.clientHeight);
+    });
+  }
+
+  function animate(){
+    requestAnimationFrame(animate);
+    if (controls) controls.update();
+    if (renderer && scene && camera) renderer.render(scene, camera);
+  }
+
+  function loadViewer(jobId){
+    viewerPanel.classList.add('show');
+    const loadingEl = document.getElementById('viewerLoading');
+    loadingEl.style.display = 'flex';
+    loadingEl.textContent = 'loading model…';
+
+    if (!renderer) initViewer();
+    if (currentModel) { scene.remove(currentModel); currentModel = null; }
+
+    const loader = new GLTFLoader();
+    loader.load(
+      `${API_BASE}/jobs/${jobId}/mesh`,
+      (gltf) => {
+        currentModel = gltf.scene;
+        const box = new THREE.Box3().setFromObject(currentModel);
+        const size = new THREE.Vector3();
+        box.getSize(size);
+        const center = new THREE.Vector3();
+        box.getCenter(center);
+        const maxDim = Math.max(size.x, size.y, size.z) || 1;
+        const scale = 1.8 / maxDim;
+        currentModel.scale.setScalar(scale);
+        currentModel.position.sub(center.multiplyScalar(scale));
+        currentModel.position.y += size.y * scale / 2;
+        scene.add(currentModel);
+        loadingEl.style.display = 'none';
+      },
+      undefined,
+      (err) => {
+        loadingEl.textContent = 'could not load 3D preview — the .zip download still has your files';
+        console.error(err);
+      }
+    );
+  }
 </script>
 </body>
 </html>

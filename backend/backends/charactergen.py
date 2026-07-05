@@ -142,13 +142,29 @@ class CharacterGenBackend(Backend3DGenerator):
         # Free the 2D stage's VRAM before loading the 3D stage — both together
         # likely exceed a T4's 16GB (this backend's own vram_gb_estimate),
         # mirroring the original stub's intent.
-        self._unload_2d()
-        self._load_stage3d()
+        #
+        # FIX (2026-07-05): if anything in this block raises (e.g. the 3D
+        # stage's dataclass/torch.load incompatibilities from CharacterGen's
+        # Nov-2023-era code on a modern Python/PyTorch), _rmbg/_infer2d have
+        # already been set to None by _unload_2d() above, but self._loaded
+        # was still True from load(). backend_manager caches this instance
+        # across jobs, so the NEXT job would see _loaded=True, skip load()
+        # entirely, and crash instantly on self._rmbg.remove_background()
+        # being None — a confusing failure that looks unrelated to the real
+        # (already-surfaced) error. Reset _loaded on any failure here so the
+        # next job gets a clean reload instead of reusing a half-torn-down
+        # instance.
+        try:
+            self._unload_2d()
+            self._load_stage3d()
 
-        print("Running CharacterGen 3D reconstruction stage...")
-        save_dir, obj_path, glb_path = self._infer3d.process_images(
-            back, front, right, left, back_proj=False, smooth_iter=5,
-        )
+            print("Running CharacterGen 3D reconstruction stage...")
+            save_dir, obj_path, glb_path = self._infer3d.process_images(
+                back, front, right, left, back_proj=False, smooth_iter=5,
+            )
+        except Exception:
+            self._loaded = False
+            raise
 
         mesh_path = output_dir / "raw_mesh.glb"
         shutil.copy(glb_path, mesh_path)

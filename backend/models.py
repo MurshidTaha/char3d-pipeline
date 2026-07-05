@@ -1,6 +1,6 @@
 from enum import Enum
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 import uuid
 import time
 
@@ -42,6 +42,21 @@ class JobStatus(str, Enum):
     failed = "failed"
 
 
+# Rough, evenly-spaced progress percentage per stage — good enough for a
+# frontend progress bar. Not meant to be precisely time-weighted (generation
+# takes far longer than packaging in practice), just monotonically increasing
+# so the bar never jumps backward and always reaches 100 on completion.
+STAGE_PROGRESS: dict[str, int] = {
+    "queued": 0,
+    "running_generation": 15,
+    "running_rigging": 55,
+    "running_upscale": 75,
+    "packaging": 90,
+    "complete": 100,
+    "failed": 100,
+}
+
+
 class GenerationRequest(BaseModel):
     character_name: str
     character_description: str
@@ -69,8 +84,22 @@ class Job(BaseModel):
     updated_at: float = Field(default_factory=time.time)
     error: Optional[str] = None
     output_zip_path: Optional[str] = None
+    output_glb_path: Optional[str] = None
     reference_image_path: Optional[str] = None
     cache_hit: bool = False
+    log: list[str] = Field(default_factory=list)
 
     def touch(self):
         self.updated_at = time.time()
+
+    def log_line(self, message: str) -> None:
+        """Append a timestamped, human-readable status line for the frontend
+        log panel, and bump updated_at at the same time."""
+        stamp = time.strftime("%H:%M:%S", time.localtime())
+        self.log.append(f"[{stamp}] {message}")
+        self.touch()
+
+    @computed_field
+    @property
+    def progress_pct(self) -> int:
+        return STAGE_PROGRESS.get(self.status.value if hasattr(self.status, "value") else self.status, 0)

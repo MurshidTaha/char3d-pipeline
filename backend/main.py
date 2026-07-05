@@ -16,6 +16,8 @@ Endpoints:
 """
 
 import shutil
+import zipfile
+import tempfile
 from pathlib import Path
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
@@ -136,6 +138,39 @@ async def download_job(job_id: str):
         media_type="application/zip",
         filename=f"{job.request.character_name}.zip",
     )
+
+
+@app.get("/jobs/{job_id}/mesh")
+async def get_job_mesh(job_id: str):
+    """
+    Serves the raw mesh.glb directly (not the full zip) so the frontend's
+    embedded three.js viewer can fetch it in one request, without asking
+    the user to unzip anything or relying on a third-party viewer site.
+    """
+    job = worker.get_job(job_id)
+    if job is None:
+        raise HTTPException(404, "Job not found")
+    if job.status != "complete":
+        raise HTTPException(409, f"Job not ready (status: {job.status})")
+
+    # Fast path: the loose mesh.glb from a fresh (non-cache-hit) run.
+    if job.output_glb_path and Path(job.output_glb_path).exists():
+        return FileResponse(job.output_glb_path, media_type="model/gltf-binary")
+
+    # Cache-hit path: no loose file was ever written for this Job instance,
+    # only the zip. Extract mesh.glb from the zip once and remember the
+    # extracted path so subsequent requests hit the fast path above.
+    if job.output_zip_path and Path(job.output_zip_path).exists():
+        with zipfile.ZipFile(job.output_zip_path) as zf:
+            glb_names = [n for n in zf.namelist() if n.endswith("mesh.glb")]
+            if not glb_names:
+                raise HTTPException(404, "No mesh.glb found inside this job's package")
+            extract_dir = Path(tempfile.mkdtemp(prefix=f"char3d_mesh_{job_id}_"))
+            extracted_path = Path(zf.extract(glb_names[0], path=extract_dir))
+            job.output_glb_path = str(extracted_path)
+            return FileResponse(extracted_path, media_type="model/gltf-binary")
+
+    raise HTTPException(404, "No mesh available for this job")
 
 
 @app.get("/config/routing")

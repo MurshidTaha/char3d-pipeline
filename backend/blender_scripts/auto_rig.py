@@ -353,8 +353,29 @@ def main():
             add_leaf_bones=False,
             bake_anim=False,
         )
+
+        # FIX (2026-07-05): GLB export was silently dropping the glTF `skin`
+        # binding (validator: NODE_SKINNED_MESH_WITHOUT_SKIN). Vertex
+        # JOINTS_0/WEIGHTS_0 + a full valid bone hierarchy existed, but no
+        # glTF `skin` object tied them together. FBX export above is
+        # confirmed fine (Deformer/SubDeformer/Cluster/BindPose all present),
+        # so this was GLB-exporter-specific. Fix: re-select mesh+armature
+        # right before the glTF export call (in case FBX export altered
+        # selection state) and pass export flags explicitly.
+        bpy.ops.object.select_all(action="DESELECT")
+        mesh_obj.select_set(True)
+        arm_obj.select_set(True)
+        bpy.context.view_layer.objects.active = arm_obj
+
         glb_path = args.output.rsplit(".", 1)[0] + ".glb"
-        bpy.ops.export_scene.gltf(filepath=glb_path, export_format="GLB", use_selection=True)
+        bpy.ops.export_scene.gltf(
+            filepath=glb_path,
+            export_format="GLB",
+            use_selection=True,
+            export_skins=True,
+            export_apply=False,
+            export_yup=True,
+        )
 
         report.update({
             "bone_count": len(arm_obj.data.bones),
