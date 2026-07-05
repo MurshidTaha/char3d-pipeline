@@ -187,13 +187,17 @@
     <div class="status-line"><span>queue position</span><span class="status-val" id="statQueue">—</span></div>
     <div id="errorBox"></div>
     <a href="#" class="download-btn" id="downloadBtn" style="display:none;">download package (.zip)</a>
+    <div id="downloadErrorBox"></div>
   </div>
 
 </div>
 
 <script>
   // Point this at your ngrok URL once the Kaggle backend is running.
-  const API_BASE = "https://fifty-dainty-satchel.ngrok-free.dev";
+  // Either edit the placeholder below, or set window.CHAR3D_API_BASE
+  // (e.g. in a <script> tag above this one) before this file loads —
+  // see README.md / SETUP_GUIDE.md.
+  const API_BASE = window.CHAR3D_API_BASE || "https://YOUR-NGROK-URL.ngrok-free.dev";
 
   const routingTable = {
     human: { anime: ["charactergen", "purpose-built, pose-canonicalized"],
@@ -334,7 +338,8 @@
             ? '<span class="status-val ok">complete (cache hit)</span>'
             : '<span class="status-val ok">complete</span>';
           downloadBtn.style.display = 'block';
-          downloadBtn.href = `${API_BASE}/jobs/${jobId}/download`;
+          downloadBtn.dataset.jobId = jobId;
+          downloadBtn.dataset.characterName = job.request?.character_name || jobId;
           submitBtn.disabled = false;
           submitBtn.textContent = 'generate character package';
           clearInterval(pollTimer);
@@ -352,6 +357,51 @@
       }
     }, 2000);
   }
+
+  // Download button — fetches the zip as a blob and saves it directly from
+  // this page, rather than navigating the browser to the ngrok/Kaggle URL.
+  const downloadErrorBox = document.getElementById('downloadErrorBox');
+
+  downloadBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    const jobId = downloadBtn.dataset.jobId;
+    if (!jobId) return;
+
+    const originalLabel = downloadBtn.textContent;
+    downloadBtn.textContent = 'downloading...';
+    downloadBtn.style.pointerEvents = 'none';
+    downloadErrorBox.innerHTML = '';
+
+    try {
+      const res = await fetch(`${API_BASE}/jobs/${jobId}/download`);
+      if (!res.ok) throw new Error(await res.text());
+
+      // Prefer the filename the server sent (Content-Disposition), fall
+      // back to the character name if the header isn't exposed by CORS.
+      const disposition = res.headers.get('Content-Disposition') || '';
+      const match = disposition.match(/filename="?([^"]+)"?/);
+      const filename = match ? match[1] : `${downloadBtn.dataset.characterName}.zip`;
+
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+
+      const tempLink = document.createElement('a');
+      tempLink.href = blobUrl;
+      tempLink.download = filename;
+      document.body.appendChild(tempLink);
+      tempLink.click();
+      tempLink.remove();
+      URL.revokeObjectURL(blobUrl);
+
+      downloadBtn.textContent = 'downloaded ✓';
+      setTimeout(() => { downloadBtn.textContent = originalLabel; }, 2500);
+    } catch (err) {
+      downloadErrorBox.innerHTML = `<div class="error-box">Download failed: ${err.message}</div>`;
+      downloadBtn.textContent = originalLabel;
+    } finally {
+      downloadBtn.style.pointerEvents = 'auto';
+    }
+  });
 </script>
 </body>
 </html>

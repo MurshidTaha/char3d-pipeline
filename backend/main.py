@@ -33,6 +33,8 @@ app.add_middleware(
     allow_origins=["*"],  # tighten this once the frontend is served from a fixed origin
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Disposition"],  # so browser JS can read the download filename
+                                              # across origins (frontend page vs ngrok API)
 )
 
 UPLOADS_DIR = Path(__file__).parent / "storage" / "uploads"

@@ -1,5 +1,7 @@
 # Character-to-3D Tool
 
+**Version: 1.0 (fresh)**
+
 Standalone asset factory: reference image in → rigged, upscaled 3D character package out.
 Feeds Phase 5.5 (Blender scene composition) as a black box, per spec.
 
@@ -27,7 +29,9 @@ signature, called at the correct point in the pipeline, with the exact TODO of w
 API call goes where. Filling them in is swapping stub lines for real calls, not
 restructuring anything.
 
-## Run it (Kaggle T4 + ngrok, same pattern as your other phases)
+## Run it (Kaggle T4 + ngrok)
+
+For a bare local check without Kaggle/Blender/ngrok:
 
 ```bash
 pip install -r backend/requirements.txt
@@ -37,8 +41,11 @@ pip install -r backend/requirements.txt
 uvicorn backend.main:app --host 0.0.0.0 --port 8000
 ```
 
-Then in a separate cell: `ngrok http 8000`, and point `frontend/index.html`'s
-`API_BASE` at the resulting URL (or set `window.CHAR3D_API_BASE` before loading the page).
+For the full Kaggle T4 + Blender + ngrok setup (recommended — this is what
+rigging actually depends on), see **SETUP_GUIDE.md**, which has two
+copy-paste-ready notebook cells plus how to point `frontend/index.html`'s
+`API_BASE` at your tunnel (or set `window.CHAR3D_API_BASE` before loading the
+page).
 
 ## Fill-in order (suggested)
 

@@ -89,7 +89,13 @@ class TripoSRBackend(Backend3DGenerator):
             pythonmeshes = self._model.extract_mesh(scene_codes, has_vertex_color=True)
             mesh = pythonmeshes[0]
 
-        mesh_path = output_dir / "raw_mesh.obj"
+        # Use the same "raw_mesh.<ext>" naming convention as the other three
+        # backends (charactergen/instantmesh/trellis all export raw_mesh.glb)
+        # so downstream stages (rigging.py, packaging.py) see one consistent
+        # output contract regardless of which backend ran. trimesh picks the
+        # exporter from the extension, and GLB preserves TripoSR's per-vertex
+        # colors just fine (glTF COLOR_0 attribute) — no quality loss vs. OBJ.
+        mesh_path = output_dir / "raw_mesh.glb"
         print(f"Exporting raw mesh to: {mesh_path}")
         mesh.export(mesh_path)
 
